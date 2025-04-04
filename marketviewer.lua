@@ -210,16 +210,20 @@ function marketviewer:getTicker(ticker)
     timeout = 0.1
   })
   print("Loading ticker data for: " .. ticker)
-  local table_vals = polyapi(ticker)
-  if table_vals == nil then
-    logger.err("Error loading ticker data")
-    return
-  end
-
-  GraphWidget:setData(table_vals)
-  UIManager:setDirty(self.graph, function()
-    return "partial", self.graph:getSize()
-  end)
+  polyapi(ticker, function(table_vals, err)
+    if not table_vals then
+      logger.err("Error loading ticker data: " .. tostring(err))
+      UIManager:show(InfoMessage:new{
+        text = _("Failed to load data."),
+        timeout = 2,
+      })
+      return
+    end
+  
+    GraphWidget:setData(table_vals)
+    UIManager:setDirty(self.graph, function()
+      return "partial", self.graph:getSize()
+    end)
   
   local last_price = 0
   local first_price = 0
@@ -272,6 +276,7 @@ function marketviewer:getTicker(ticker)
   UIManager:setDirty(self.textw, function()
     return "ui", self.textw:getSize()
   end)
+end)
 end
 
 
