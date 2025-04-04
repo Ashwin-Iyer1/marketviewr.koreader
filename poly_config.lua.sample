@@ -1,0 +1,5 @@
+local poly_config = {
+    api_key = "YOUR_API_KEY_HERE",
+}
+
+return poly_config
