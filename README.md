@@ -1,4 +1,4 @@
-# MarketViewer: View a stock on your Kindle
+# MarketViewer: View a stock on your Kindle NOT WORKING!!!
 
 Very simple stock viewer with a small graph
 
