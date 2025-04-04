@@ -20,14 +20,12 @@ function MarketView:addToMainMenu(menu_items)
         keep_menu_open = true,
         callback = function()
             NetworkMgr:runWhenOnline(function()
-            end)
-    
-            local chatgpt_viewer = marketviewer:new {
-                title = _("Market View"),
-                text = _("Input a ticker symbol"),
-              }
-    
-              UIManager:show(chatgpt_viewer)
+                local marketview = marketviewer:new {
+                    title = _("Market View"),
+                    text = _("Input a ticker symbol"),
+                  }
+                  UIManager:show(marketview)
+                end)
         end,
     }
 end
