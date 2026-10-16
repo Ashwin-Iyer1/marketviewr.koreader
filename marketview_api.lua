@@ -1,13 +1,13 @@
-local data = require("marketdata")
+local data = require("marketview_data")
 -- Network loading is lazy: the sample viewer works offline and without a key.
 return function(input, callback, days)
     local ticker, invalid = data.ticker(input)
     if not ticker then callback(nil, invalid); return end
     days = days or 30
     if days ~= 7 and days ~= 30 and days ~= 90 then callback(nil, "Choose a 7, 30 or 90 day range."); return end
-    local configured, config = pcall(require, "poly_config")
+    local configured, config = pcall(require, "marketview_config")
     if not configured or type(config) ~= "table" or type(config.api_key) ~= "string" or config.api_key == "" or config.api_key:match("YOUR_API_KEY") then
-        callback(nil, "Add your API key to poly_config.lua to load market data. The fictional sample works without a key."); return
+        callback(nil, "Add your API key to marketview_config.lua to load market data. The fictional sample works without a key."); return
     end
     local https = require("ssl.https")
     local json = require("json")

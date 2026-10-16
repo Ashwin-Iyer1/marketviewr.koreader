@@ -1,7 +1,7 @@
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local _ = require("gettext")
 local UIManager = require("ui/uimanager")
-local marketviewer = require("marketviewer")
+local marketview_viewer = require("marketview_viewer")
 
 local MarketView = WidgetContainer:new{
     name = 'marketview',
@@ -18,7 +18,7 @@ function MarketView:addToMainMenu(menu_items)
         sorting_hint = "more_tools",
         keep_menu_open = true,
         callback = function()
-                local marketview = marketviewer:new {
+                local marketview = marketview_viewer:new {
                     title = _("Market View"),
                     text = _("Explore a fictional sample or choose a ticker."),
                   }

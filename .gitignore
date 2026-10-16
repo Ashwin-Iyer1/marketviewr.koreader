@@ -2,3 +2,4 @@ poly_config.lua
 dist/
 __pycache__/
 .venv/
+marketview_config.lua

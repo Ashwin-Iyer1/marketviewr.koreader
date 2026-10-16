@@ -1,7 +1,7 @@
 package.path = "./?.lua;" .. package.path
 local count = 0
 local function check(value, message) assert(value, message); count = count + 1 end
-local data = require("marketdata")
+local data = require("marketview_data")
 check(data.ticker(" brk.b ") == "BRK.B", "Trim and normalize ticker")
 for _, input in ipairs({"", "../AAPL", "AAPL?apiKey=secret", "123", string.rep("A", 16)}) do check(not data.ticker(input), "Reject malformed ticker") end
 local series = assert(data.prepare({results={{t=2000,c=12},{t=1000,c=10},{t=2000,c=13},{t=3000,c=0/0},{t=4000,c=-1},{t=math.huge,c=5}}}))
@@ -20,7 +20,7 @@ function Widget:new(values) local instance=setmetatable(values or {},{__index=se
 package.loaded["ui/widget/widget"] = Widget
 package.loaded["ffi/blitbuffer"] = {COLOR_WHITE="white",COLOR_BLACK="black",COLOR_GRAY="gray"}
 package.loaded["ui/geometry"] = {new=function(_,t)return t end}
-local Graph = require("graphwidget")
+local Graph = require("marketview_graph")
 local a,b=Graph:new{width=320.5,height=170.5},Graph:new{}
 a:setData(data.sample(7)); check(#b.bars == 0, "Graphs must not share data")
 for _, values in ipairs({{},{{t=1,c=2}},{{t=1,c=2},{t=2,c=2}},{{t=1,c=2},{t=2,c=8},{t=3,c=4}},data.sample(90).bars}) do
@@ -32,11 +32,11 @@ for _, values in ipairs({{},{{t=1,c=2}},{{t=1,c=2},{t=2,c=2}},{{t=1,c=2},{t=2,c=
   check(painted>=1,"Render empty/single/flat/short/long series")
 end
 
-local call = require("polyapi")
+local call = require("marketview_api")
 local result, message
 local function receive(value,err) result=value; message=err end
 call("AAPL",receive); check(not result and message:find("API key"),"Missing key must be actionable without loading network modules")
-package.loaded.poly_config={api_key="fixture-only"}
+package.loaded.marketview_config={api_key="fixture-only"}
 local status, body, fail, reset = 200, "ok", false, 0
 package.loaded["ui/network/manager"]={runWhenOnline=function(_,fn)fn()end}
 package.loaded.socketutil={set_timeout=function()end, reset_timeout=function()reset=reset+1 end,table_sink=function(t)return function(chunk)if chunk then t[#t+1]=chunk end;return 1 end end}
@@ -63,8 +63,8 @@ package.loaded["ui/size"]={padding={large=10,default=5},margin={small=5}}
 package.loaded.gettext=function(text)return text end
 local queue, callbacks = {}, {}
 package.loaded["ui/uimanager"]={scheduleIn=function(_,_,fn)queue[#queue+1]=fn end,show=function()end,close=function()end}
-package.loaded.polyapi=function(ticker,callback)callbacks[#callbacks+1]=callback end
-local Viewer=require("marketviewer")
+package.loaded.marketview_api=function(ticker,callback)callbacks[#callbacks+1]=callback end
+local Viewer=require("marketview_viewer")
 local viewed={ticker="DEMO",days=30,revision=0,closed=false,graph={setData=function(self,value)self.value=value end},setText=function(self,text)self.text=text end}
 setmetatable(viewed,{__index=Viewer})
 viewed:getTicker("AAPL");viewed:getTicker("MSFT");queue[1]();queue[2]()

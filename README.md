@@ -20,7 +20,7 @@ Extract `dist/marketview.koplugin.zip` into KOReader's `plugins` directory, so t
 
 ## Market data configuration
 
-The offline sample needs no account or network. For market history, copy `poly_config.lua.sample` to `poly_config.lua` inside the installed plugin and replace its placeholder with your own API key. This file is gitignored and excluded from packaging.
+The offline sample needs no account or network. For market history, copy `marketview_config.lua.sample` to `marketview_config.lua` inside the installed plugin and replace its placeholder with your own API key. This file is gitignored and excluded from packaging.
 
 [Massive (formerly Polygon)](https://massive.com/blog/polygon-is-now-massive/) supports existing Polygon keys. Requests use its current `api.massive.com` endpoint and an Authorization header; keys never enter the URL or error messages. A ticker request sends the symbol, selected date range, and key to the provider. Data access and delay depend on your subscription. No paid subscription is required to explore the sample.
 

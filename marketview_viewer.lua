@@ -2,11 +2,11 @@
 Displays some text in a scrollable view.
 
 @usage
-    local marketviewer = marketviewer:new{
+    local marketview_viewer = marketview_viewer:new{
         title = _("I can scroll!"),
         text = _("I'll need to be longer than this example to scroll."),
     }
-    UIManager:show(marketviewer)
+    UIManager:show(marketview_viewer)
 ]]
 local Blitbuffer = require("ffi/blitbuffer")
 local ButtonTable = require("ui/widget/buttontable")
@@ -24,14 +24,14 @@ local UIManager = require("ui/uimanager")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local _ = require("gettext")
-local GraphWidget = require("graphwidget")
+local GraphWidget = require("marketview_graph")
 local Screen = Device.screen
 local InfoMessage = require("ui/widget/infomessage")
-local data = require("marketdata")
+local data = require("marketview_data")
 
-local polyapi = require("polyapi")
+local marketview_api = require("marketview_api")
 
-local marketviewer = InputContainer:extend {
+local marketview_viewer = InputContainer:extend {
   title = nil,
   text = nil,
   width = nil,
@@ -64,7 +64,7 @@ local marketviewer = InputContainer:extend {
   find_centered_lines_count = 5, -- line with find results to be not far from the center
 }
 
-function marketviewer:init()
+function marketview_viewer:init()
   self.ticker = "DEMO"
   self.days = 30
   self.revision = 0
@@ -198,7 +198,7 @@ function marketviewer:init()
 end
 
 
-function marketviewer:onCloseWidget()
+function marketview_viewer:onCloseWidget()
   self.closed = true
   self.revision = self.revision + 1
   UIManager:setDirty(nil, function()
@@ -206,7 +206,7 @@ function marketviewer:onCloseWidget()
   end)
 end
 
-function marketviewer:setText(text)
+function marketview_viewer:setText(text)
   local old = self.scroll_text_w
   self.scroll_text_w = ScrollTextWidget:new {
     text = text, face = self.text_face, fgcolor = self.fgcolor,
@@ -218,12 +218,12 @@ function marketviewer:setText(text)
   UIManager:setDirty(self, function() return "ui", self.frame.dimen end)
 end
 
-function marketviewer:setRange(days)
+function marketview_viewer:setRange(days)
   self.days = days
   self:getTicker(self.ticker)
 end
 
-function marketviewer:getTicker(input)
+function marketview_viewer:getTicker(input)
   local ticker, invalid = data.ticker(input)
   if not ticker then UIManager:show(InfoMessage:new { text = invalid, timeout = 4 }); return end
   self.revision = self.revision + 1
@@ -241,7 +241,7 @@ function marketviewer:getTicker(input)
   -- Give KOReader a chance to paint the loading state before the bounded request.
   UIManager:scheduleIn(0.1, function()
     if self.closed or revision ~= self.revision then return end
-    polyapi(ticker, function(series, err)
+    marketview_api(ticker, function(series, err)
       if self.closed or revision ~= self.revision then return end
       self.series = series
       self.graph:setData(series)
@@ -251,7 +251,7 @@ function marketviewer:getTicker(input)
   end)
 end
 
-function marketviewer:promptTicker()
+function marketview_viewer:promptTicker()
   local input_dialog
   input_dialog = InputDialog:new {
     title = _("Choose Ticker"),
@@ -284,7 +284,7 @@ function marketviewer:promptTicker()
   input_dialog:onShowKeyboard()
 end
 
-function marketviewer:onShow()
+function marketview_viewer:onShow()
   UIManager:setDirty(self, function()
     return "partial", self.frame.dimen
   end)
@@ -292,7 +292,7 @@ function marketviewer:onShow()
 end
 
 
-function marketviewer:onClose()
+function marketview_viewer:onClose()
   self.closed = true
   self.revision = self.revision + 1
   UIManager:close(self)
@@ -303,4 +303,4 @@ function marketviewer:onClose()
 end
 
 
-return marketviewer
+return marketview_viewer

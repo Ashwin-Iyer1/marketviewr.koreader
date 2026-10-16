@@ -1,7 +1,7 @@
 local Widget = require("ui/widget/widget")
 local Blitbuffer = require("ffi/blitbuffer")
 local Geom = require("ui/geometry")
-local data = require("marketdata")
+local data = require("marketview_data")
 local GraphWidget = Widget:extend{ width = 320, height = 170 }
 function GraphWidget:init()
     self.bars = {}
