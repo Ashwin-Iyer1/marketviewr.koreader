@@ -1,35 +1,42 @@
-# MarketViewer: View a stock on your Kindle NOT WORKING!!!
+# MarketView for KOReader
 
-Very simple stock viewer with a small graph
+A stock-history viewer designed for a monochrome e-reader: a clean close-price graph, readable summary, and an offline sample you can try without an API key.
 
-## Getting Started
+## Use it
 
-To use this plugin, You'll need to do a few things:
+Open **More tools → MarketView**. The initial chart is an explicitly fictional sample, not a market quote. Choose **7 days**, **30 days**, or **90 days** to change the window. **Ticker** accepts a stock symbol such as `AAPL` or `BRK.B`; **Refresh** retries the current selection; **Sample** returns to the offline fixture.
 
-Get [KoReader](https://github.com/koreader/koreader) installed on your e-reader. You can find instructions for doing this for a variety of devices [here](https://www.mobileread.com/forums/forumdisplay.php?f=276).
+The summary shows first/last close, absolute and percentage change, observed close range, number of observations, and actual observation dates in UTC. The graph uses one equally spaced point per observation; non-trading days are omitted. Flat series and one-to-three observations render safely. Each viewer owns its data, and a late response cannot replace a newer selection or a closed window.
 
-If you want to do this on a Kindle, you are going to have to jailbreak it. I recommend following [this guide](https://www.mobileread.com/forums/showthread.php?t=320564) to jailbreak your Kindle.
+## Install
 
-Acquire an API key from an API account on Polygon. Once you have your API key, create a `poly_config.lua` file in the following structure or modify and rename the `poly_config.lua.sample` file:
+Install [KOReader](https://github.com/koreader/koreader) using its supported instructions for your device. Build an installable archive from this checkout:
 
-
-```lua
-local poly_config = {
-    api_key = "YOUR_API_KEY",
-}
-
-return poly_config
+```sh
+python3 scripts/package.py
 ```
 
-## Installation
+Extract `dist/marketview.koplugin.zip` into KOReader's `plugins` directory, so the result is `plugins/marketview.koplugin/main.lua`. Restart KOReader. CI also builds the same archive as an Actions artifact. The archive explicitly excludes your API configuration.
 
-If you clone this project, you should be able to put the directory, `marketView.koplugin`, in the `koreader/plugins` directory and it should work. If you want to use the plugin without cloning the project, you can download the zip file from the releases page and extract the `marketView.koplugin` directory to the `koreader/plugins` directory. If for some reason you extract the files of this repository in another directory, rename it before moving it to the `koreader/plugins` directory.
+## Market data configuration
 
-## How To Use
+The offline sample needs no account or network. For market history, copy `poly_config.lua.sample` to `poly_config.lua` inside the installed plugin and replace its placeholder with your own API key. This file is gitignored and excluded from packaging.
 
-To use MarketView, go to the plugins menu, More tools, then click MarketView and choose a ticker with the button at the bottom.
+[Massive (formerly Polygon)](https://massive.com/blog/polygon-is-now-massive/) supports existing Polygon keys. Requests use its current `api.massive.com` endpoint and an Authorization header; keys never enter the URL or error messages. A ticker request sends the symbol, selected date range, and key to the provider. Data access and delay depend on your subscription. No paid subscription is required to explore the sample.
 
-## Credits
-Codebase is very similar to [https://github.com/drewbaumann/AskGPT/](https://github.com/drewbaumann/AskGPT/) and I recommend you checkout their project. Could not create the viewer without referencing their code so the code is very similar.
+The plugin requests [adjusted daily aggregates](https://massive.com/docs/rest/stocks/aggregates/custom-bars). Invalid, missing, duplicate, or unsorted observations are handled before charting. Access-denied, rate-limit, malformed-response, empty-range, and connection errors have separate messages. The last bar may be incomplete or delayed; this is a historical viewer, not a real-time trading feed.
 
-License: GPLv3
+## Verification and limits
+
+```sh
+luajit tests/run.lua
+python3 scripts/package.py
+```
+
+The suite exercises the actual Lua 5.1-compatible data, graph painting, API adapter, and viewer request lifecycle with isolated KOReader/network mocks. It covers fractional display sizes, sparse/flat series, independent graph state, request races, close handling, UTC dates, secret-safe errors, and a 512 KiB response limit. No real API key is used.
+
+The update was tested under LuaJIT 2.1; actual GraphWidget drawing was inspected through a recorded paint-buffer render. A physical KOReader device and authenticated provider request have **not** been verified. Networking uses KOReader's 5-second block and 15-second transfer timeouts; DNS resolution can exceed those timeouts, and the synchronous request can briefly block UI interaction. Wi-Fi is requested only when you choose actual market data. The plugin does not place trades.
+
+## Attribution
+
+The original viewer was based on [drewbaumann/AskGPT](https://github.com/drewbaumann/AskGPT/). That provenance is retained. License: GPLv3, as declared by the original project.

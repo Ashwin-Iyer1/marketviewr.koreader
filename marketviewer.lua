@@ -27,7 +27,7 @@ local _ = require("gettext")
 local GraphWidget = require("graphwidget")
 local Screen = Device.screen
 local InfoMessage = require("ui/widget/infomessage")
-local logger = require("logger")
+local data = require("marketdata")
 
 local polyapi = require("polyapi")
 
@@ -65,6 +65,12 @@ local marketviewer = InputContainer:extend {
 }
 
 function marketviewer:init()
+  self.ticker = "DEMO"
+  self.days = 30
+  self.revision = 0
+  self.closed = false
+  self.series = data.sample(self.days)
+  self.text = data.summary("DEMO", self.series, "FICTIONAL SAMPLE — not market data")
   -- calculate window dimension
   self.align = "center"
   self.region = Geom:new {
@@ -97,28 +103,19 @@ function marketviewer:init()
 
 
   -- buttons
-  local default_buttons =
-  {
+  local buttons = {
     {
-      text = _("Choose Ticker"),
-      id = "choose_ticker",
-      callback = function()
-        self:promptTicker()
-
-      end,
+      { text = _("7 days"), callback = function() self:setRange(7) end },
+      { text = _("30 days"), callback = function() self:setRange(30) end },
+      { text = _("90 days"), callback = function() self:setRange(90) end },
     },
     {
-      text = _("Close"),
-      callback = function()
-        self:onClose()
-      end,
-      hold_callback = self.default_hold_callback,
+      { text = _("Ticker"), callback = function() self:promptTicker() end },
+      { text = _("Refresh"), callback = function() self:getTicker(self.ticker) end },
+      { text = _("Sample"), callback = function() self:getTicker("DEMO") end },
+      { text = _("Close"), callback = function() self:onClose() end },
     },
   }
-  local buttons = self.buttons_table or {}
-  if self.add_default_buttons or not self.buttons_table then
-    table.insert(buttons, default_buttons)
-  end
   self.button_table = ButtonTable:new {
     width = self.width - 2 * self.button_padding,
     buttons = buttons,
@@ -128,6 +125,7 @@ function marketviewer:init()
   local graph_height = self.height / 4 -- match the fixed graph height
 
   local textw_height = self.height- titlebar:getHeight()- graph_height- self.button_table:getSize().h
+  self.text_height = math.max(40, textw_height - 2 * self.text_padding - 2 * self.text_margin)
 
 
   self.scroll_text_w = ScrollTextWidget:new {
@@ -135,7 +133,7 @@ function marketviewer:init()
     face = self.text_face,
     fgcolor = self.fgcolor,
     width = self.width - 2 * self.text_padding - 2 * self.text_margin,
-    height = textw_height - 2 * self.text_padding - 2 * self.text_margin,
+    height = self.text_height,
     dialog = self,
     alignment = self.alignment,
     justified = self.justified,
@@ -158,6 +156,8 @@ function marketviewer:init()
     color = Blitbuffer.COLOR_BLACK,
   }
   
+
+  self.graph:setData(self.series)
 
   self.frame = FrameContainer:new {
     radius = Size.radius.window,
@@ -199,92 +199,63 @@ end
 
 
 function marketviewer:onCloseWidget()
+  self.closed = true
+  self.revision = self.revision + 1
   UIManager:setDirty(nil, function()
     return "partial", self.frame.dimen
   end)
 end
 
-function marketviewer:getTicker(ticker)
-  UIManager:show(InfoMessage:new{
-    text = _("Loading..."),
-    timeout = 0.1
-  })
-  print("Loading ticker data for: " .. ticker)
-  polyapi(ticker, function(table_vals, err)
-    if not table_vals then
-      logger.err("Error loading ticker data: " .. tostring(err))
-      UIManager:show(InfoMessage:new{
-        text = _("Failed to load data."),
-        timeout = 2,
-      })
-      return
-    end
-  
-    GraphWidget:setData(table_vals)
-    UIManager:setDirty(self.graph, function()
-      return "partial", self.graph:getSize()
-    end)
-  
-  local last_price = 0
-  local first_price = 0
-  if type(table_vals) == "table" then
-    for key, value in pairs(table_vals) do
-      if key == "results" then
-        for i, result in ipairs(value) do
-          for k, v in pairs(result) do
-            if k == "c" then
-              last_price = v
-            end
-            if k == "o" and i == 1 then
-              first_price = v
-            end
-          end
-        end
-      end
-    end
-  end
-  
-  local price_change = last_price - first_price
-  local display_text = "Ticker: " .. ticker .. "\n" ..
-                       "Price: " .. last_price .. "\n" ..
-                       "Change: " .. price_change
-  
-  -- Create a new text widget with the updated text
-  local old_text_widget = self.scroll_text_w
-  
-  -- Create a new ScrollTextWidget with the updated text
+function marketviewer:setText(text)
+  local old = self.scroll_text_w
   self.scroll_text_w = ScrollTextWidget:new {
-    text = display_text,
-    face = self.text_face,
-    fgcolor = self.fgcolor,
+    text = text, face = self.text_face, fgcolor = self.fgcolor,
     width = self.width - 2 * self.text_padding - 2 * self.text_margin,
-    height = old_text_widget:getTextHeight(),
-    dialog = self,
-    alignment = self.alignment,
-    justified = self.justified,
-    lang = self.lang,
-    para_direction_rtl = self.para_direction_rtl,
-    auto_para_direction = self.auto_para_direction,
-    alignment_strict = self.alignment_strict,
-    scroll_callback = self._buttons_scroll_callback,
+    height = self.text_height, dialog = self, alignment = "left", justified = false,
   }
-  
-  -- Replace the old widget with the new one in the textw container
   self.textw[1] = self.scroll_text_w
-  
-  -- Mark widget as dirty to trigger a redraw
-  UIManager:setDirty(self.textw, function()
-    return "ui", self.textw:getSize()
-  end)
-end)
+  if old and old.free then old:free() end
+  UIManager:setDirty(self, function() return "ui", self.frame.dimen end)
 end
 
+function marketviewer:setRange(days)
+  self.days = days
+  self:getTicker(self.ticker)
+end
+
+function marketviewer:getTicker(input)
+  local ticker, invalid = data.ticker(input)
+  if not ticker then UIManager:show(InfoMessage:new { text = invalid, timeout = 4 }); return end
+  self.revision = self.revision + 1
+  local revision = self.revision
+  self.ticker = ticker
+  self.graph:setData(nil)
+  self.series = nil
+  if ticker == "DEMO" then
+    self.series = data.sample(self.days)
+    self.graph:setData(self.series)
+    self:setText(data.summary(ticker, self.series, "FICTIONAL SAMPLE — not market data"))
+    return
+  end
+  self:setText(string.format("%s · %d calendar days\nLoading adjusted daily closes…", ticker, self.days))
+  -- Give KOReader a chance to paint the loading state before the bounded request.
+  UIManager:scheduleIn(0.1, function()
+    if self.closed or revision ~= self.revision then return end
+    polyapi(ticker, function(series, err)
+      if self.closed or revision ~= self.revision then return end
+      self.series = series
+      self.graph:setData(series)
+      if not series then self:setText(ticker .. "\n" .. tostring(err) .. "\nChoose Refresh to retry or Sample to explore offline."); return end
+      self:setText(data.summary(ticker, series, self.days .. " day range") .. "\nData may be delayed by your plan. Fetched " .. os.date("!%Y-%m-%d %H:%M UTC") .. ".")
+    end, self.days)
+  end)
+end
 
 function marketviewer:promptTicker()
   local input_dialog
   input_dialog = InputDialog:new {
     title = _("Choose Ticker"),
-    input = "",
+    input = self.ticker == "DEMO" and "" or self.ticker,
     input_type = "text",
     description = _("Enter the ticker symbol:"),
     buttons = {
@@ -322,6 +293,8 @@ end
 
 
 function marketviewer:onClose()
+  self.closed = true
+  self.revision = self.revision + 1
   UIManager:close(self)
   if self.close_callback then
     self.close_callback()
